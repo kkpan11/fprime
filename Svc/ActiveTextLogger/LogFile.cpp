@@ -70,7 +70,7 @@ namespace Svc {
                 // Only return a good status if the write was valid
                 status = (writeSize > 0);
 
-                this->m_currentFileSize += writeSize;
+                this->m_currentFileSize += static_cast<U32>(writeSize);
             }
         }
 
@@ -89,7 +89,7 @@ namespace Svc {
         }
 
         // If file name is too large, return failure:
-        U32 fileNameSize = Fw::StringUtils::string_length(fileName, Fw::String::STRING_SIZE);
+        FwSizeType fileNameSize = Fw::StringUtils::string_length(fileName, static_cast<FwSizeType>(Fw::String::STRING_SIZE));
         if (fileNameSize == Fw::String::STRING_SIZE) {
             return false;
         }
@@ -140,7 +140,7 @@ namespace Svc {
         }
 
         // Open the file (using CREATE so that it truncates an already existing file):
-        Os::File::Status stat = this->m_file.open(fileNameFinal, Os::File::OPEN_CREATE, Os::File::OverwriteType::NO_OVERWRITE);
+        Os::File::Status stat = this->m_file.open(fileNameFinal, Os::File::OPEN_CREATE, Os::File::OverwriteType::OVERWRITE);
 
         // Bad status when trying to open the file:
         if (stat != Os::File::OP_OK) {

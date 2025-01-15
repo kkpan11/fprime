@@ -200,7 +200,7 @@ namespace Svc {
   void BufferLoggerTester ::
     dispatchAll()
   {
-    while(this->component.m_queue.getNumMsgs() > 0)
+    while(this->component.m_queue.getMessagesAvailable() > 0)
       this->dispatchOne();
   }
 
@@ -251,7 +251,7 @@ namespace Svc {
     checkHashFileExists(const Fw::StringBase& fileName)
   {
     Os::ValidatedFile validatedFile(fileName.toChar());
-    const Fw::String& hashFileName = validatedFile.getHashFileName();
+    const Fw::StringBase& hashFileName = validatedFile.getHashFileName();
     this->checkFileExists(hashFileName);
   }
 

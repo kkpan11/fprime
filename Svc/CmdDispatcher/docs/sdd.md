@@ -1,4 +1,3 @@
-\page SvcCmdDispatcherComponent Svc::CmdDispatcher Component
 # Svc::CmdDispatcher Component
 
 ## 1. Introduction
@@ -32,11 +31,11 @@ The `Svc::CmdDispatcher` component uses the following port types:
 
 Port Data Type | Name | Direction | Kind | Usage
 -------------- | ---- | --------- | ---- | -----
-[`Fw::Cmd`](../../../Fw/Cmd/docs/sdd.html) | cmdSend | Output | n/a | Send commands to components
-[`Fw::CmdResponse`](../../../Fw/Cmd/docs/sdd.html) | compStat | Input | Asynchronous | Port for components to report command status
-[`Fw::CmdResponse`](../../../Fw/Cmd/docs/sdd.html) | seqStatus | Output | n/a | Send command status to command buffer source
-[`Fw::Com`](../../../Fw/Com/docs/sdd.html) | cmdBuff | Input | Asynchronous | Receive command buffer
-[`Fw::CmdReg`](../../../Fw/Cmd/docs/sdd.html) | cmdReg | Input | Synchronous | Command Registration 
+[`Fw::Cmd`](../../../Fw/Cmd/docs/sdd.md) | cmdSend | Output | n/a | Send commands to components
+[`Fw::CmdResponse`](../../../Fw/Cmd/docs/sdd.md) | compStat | Input | Asynchronous | Port for components to report command status
+[`Fw::CmdResponse`](../../../Fw/Cmd/docs/sdd.md) | seqStatus | Output | n/a | Send command status to command buffer source
+[`Fw::Com`](../../../Fw/Com/docs/sdd.md) | cmdBuff | Input | Asynchronous | Receive command buffer
+[`Fw::CmdReg`](../../../Fw/Cmd/docs/sdd.md) | cmdReg | Input | Synchronous | Command Registration 
 
 ### 3.2 Functional Description
 
@@ -99,17 +98,13 @@ sequenceDiagram
 
 `Svc::CmdDispatcher` has no significant algorithms.
 
-## 4. Dictionary
-
-Dictionaries: [HTML](CmdDispatcher.html)
-
 ## 4. Module Checklists
 
-Document | Link
--------- | ----
-Design Checklist | [Link](Checklist_Design.xlsx)
-Code Checklist | [Link](Checklist_Code.xlsx)
-Unit Test Checklist | [Link](Checklist_Unit_Test.xls)
+Checklist |
+-------- |
+[Design](Checklist_Design.xlsx) |
+[Code](Checklist_Code.xlsx) |
+[Unit Test](Checklist_Unit_Test.xls) |
 
 ## 5. Unit Testing
 

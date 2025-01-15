@@ -1,4 +1,3 @@
-\page SvcRateGroupDriverComponent Svc::RateGroupDriver Component
 # Svc::RateGroupDriver Component
 
 ## 1. Introduction
@@ -32,8 +31,8 @@ The Svc::RateGroupDriver component uses the following port types:
 
 Port Data Type | Name | Direction | Kind | Usage
 -------------- | ---- | --------- | ---- | -----
-[`Svc::Cycle`](../Sched/docs/sdd.html) | CycleIn | Input | Synchronous | Receive the system tick
-[`Svc::Cycle`](../Sched/docs/sdd.html) | CycleOut| Output | n/a | Used to drive rate groups
+[`Svc::Cycle`](../../Sched/docs/sdd.md) | CycleIn | Input | Synchronous | Receive the system tick
+[`Svc::Cycle`](../../Sched/docs/sdd.md) | CycleOut| Output | n/a | Used to drive rate groups
 
 #### 3.2 Functional Description
 
@@ -82,11 +81,11 @@ No dictionary for this module
 
 ## 5. Module Checklists
 
-Document | Link
--------- | ----
-Design Checklist | [Link](Checklist_Design.xlsx)
-Code Review Checklist | [Link](Checklist_Code.xlsx)
-Unit Test Checklist | [Link](Checklist_Unit_Test.xlsx)
+Checklist |
+-------- |
+[Design](Checklist_Design.xlsx) |
+[Code](Checklist_Code.xlsx) |
+[Unit Test](Checklist_Unit_Test.xls) |
 
 ## 6. Unit Testing
 

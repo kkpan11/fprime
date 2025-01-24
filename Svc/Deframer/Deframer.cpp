@@ -45,10 +45,6 @@ Deframer ::Deframer(const char* const compName) :
     (void) memset(m_pollBuffer, 0, sizeof m_pollBuffer);
 }
 
-void Deframer ::init(const NATIVE_INT_TYPE instance) {
-    DeframerComponentBase::init(instance);
-}
-
 Deframer ::~Deframer() {}
 
 void Deframer ::setup(DeframingProtocol& protocol) {
@@ -140,7 +136,7 @@ void Deframer ::route(Fw::Buffer& packetBuffer) {
                     comOut_out(0, com, 0);
                 }
                 else {
-                    Fw::Logger::logMsg(
+                    Fw::Logger::log(
                         "[ERROR] Serializing com buffer failed with status %d\n",
                         status
                     );
@@ -156,7 +152,7 @@ void Deframer ::route(Fw::Buffer& packetBuffer) {
                     // The FileUplink component does not expect the packet
                     // type to be there.
                     packetBuffer.setData(packetData + sizeof(packetType));
-                    packetBuffer.setSize(packetSize - sizeof(packetType));
+                    packetBuffer.setSize(static_cast<U32>(packetSize - sizeof(packetType)));
                     // Send the packet buffer
                     bufferOut_out(0, packetBuffer);
                     // Transfer ownership of the buffer to the receiver
@@ -170,7 +166,7 @@ void Deframer ::route(Fw::Buffer& packetBuffer) {
         }
     }
     else {
-        Fw::Logger::logMsg(
+        Fw::Logger::log(
             "[ERROR] Deserializing packet type failed with status %d\n",
             status
         );
@@ -209,7 +205,11 @@ void Deframer ::processBuffer(Fw::Buffer& buffer) {
         const Fw::SerializeStatus status =
             m_inRing.serialize(&bufferData[offset], serSize);
         // If data does not fit, there is a coding error
-        FW_ASSERT(status == Fw::FW_SERIALIZE_OK, status, offset, serSize);
+        FW_ASSERT(
+            status == Fw::FW_SERIALIZE_OK,
+            static_cast<FwAssertArgType>(status),
+            static_cast<FwAssertArgType>(offset),
+            static_cast<FwAssertArgType>(serSize));
         // Process the data
         processRing();
         // Update buffer offset and remaining
@@ -220,7 +220,7 @@ void Deframer ::processBuffer(Fw::Buffer& buffer) {
     // In every iteration, either remaining == 0 and we break out
     // of the loop, or we consume at least one byte from the buffer.
     // So there should be no data left in the buffer.
-    FW_ASSERT(remaining == 0, remaining);
+    FW_ASSERT(remaining == 0, static_cast<FwAssertArgType>(remaining));
 
 }
 
@@ -253,28 +253,34 @@ void Deframer ::processRing() {
         // Deframing protocol must not consume data in the ring buffer
         FW_ASSERT(
             m_inRing.get_allocated_size() == remaining,
-            m_inRing.get_allocated_size(),
-            remaining
+            static_cast<FwAssertArgType>(m_inRing.get_allocated_size()),
+            static_cast<FwAssertArgType>(remaining)
         );
         // On successful deframing, consume data from the ring buffer now
         if (status == DeframingProtocol::DEFRAMING_STATUS_SUCCESS) {
             // If deframing succeeded, protocol should set needed
             // to a non-zero value
             FW_ASSERT(needed != 0);
-            FW_ASSERT(needed <= remaining, needed, remaining);
+            FW_ASSERT(
+                needed <= remaining,
+                static_cast<FwAssertArgType>(needed),
+                static_cast<FwAssertArgType>(remaining));
             m_inRing.rotate(needed);
             FW_ASSERT(
                 m_inRing.get_allocated_size() == remaining - needed,
-                m_inRing.get_allocated_size(),
-                remaining,
-                needed
+                static_cast<FwAssertArgType>(m_inRing.get_allocated_size()),
+                static_cast<FwAssertArgType>(remaining),
+                static_cast<FwAssertArgType>(needed)
             );
         }
         // More data needed
         else if (status == DeframingProtocol::DEFRAMING_MORE_NEEDED) {
             // Deframing protocol should not report "more is needed"
             // unless more is needed
-            FW_ASSERT(needed > remaining, needed, remaining);
+            FW_ASSERT(
+                needed > remaining,
+                static_cast<FwAssertArgType>(needed),
+                static_cast<FwAssertArgType>(remaining));
             // Break out of loop: suspend deframing until we receive
             // another buffer
             break;
@@ -285,20 +291,20 @@ void Deframer ::processRing() {
             m_inRing.rotate(1);
             FW_ASSERT(
                 m_inRing.get_allocated_size() == remaining - 1,
-                m_inRing.get_allocated_size(),
-                remaining
+                static_cast<FwAssertArgType>(m_inRing.get_allocated_size()),
+                static_cast<FwAssertArgType>(remaining)
             );
             // Log checksum errors
             // This is likely a real error, not an artifact of other data corruption
             if (status == DeframingProtocol::DEFRAMING_INVALID_CHECKSUM) {
-                Fw::Logger::logMsg("[ERROR] Deframing checksum validation failed\n");
+                Fw::Logger::log("[ERROR] Deframing checksum validation failed\n");
             }
         }
     }
 
     // If more not needed, circular buffer should be empty
     if (status != DeframingProtocol::DEFRAMING_MORE_NEEDED) {
-        FW_ASSERT(remaining == 0, remaining);
+        FW_ASSERT(remaining == 0, static_cast<FwAssertArgType>(remaining));
     }
 
 }

@@ -12,6 +12,9 @@
 #include "Svc/CmdSequencer/test/ut/CommandBuffers.hpp"
 #include "Svc/CmdSequencer/test/ut/SequenceFiles/FPrime/FPrime.hpp"
 #include "CmdSequencerTester.hpp"
+#include "Os/Delegate.hpp"
+#include "Os/Posix/FileSystem.hpp"
+#include "Os/Posix/Directory.hpp"
 
 namespace Svc {
 
@@ -204,7 +207,6 @@ namespace Svc {
     Fw::Time testTime(TB_WORKSTATION_TIME, 1, 1);
     this->setTestTime(testTime);
     // Write the file
-    const char *const fileName = file.getName().toChar();
     file.write();
     // Get error info
     SequenceFiles::File::ErrorInfo errorInfo;
@@ -216,7 +218,7 @@ namespace Svc {
     {
       this->interceptor.fileStatus = Os::File::Status::DOESNT_EXIST;
       // Validate the file
-      this->sendCmd_CS_VALIDATE(0, 0, fileName);
+      this->sendCmd_CS_VALIDATE(0, 0, file.getName());
       this->clearAndDispatch();
       // Assert events
       ASSERT_EVENTS_SIZE(1);
@@ -228,7 +230,7 @@ namespace Svc {
       this->interceptor.fileStatus = Os::File::NO_PERMISSION;
       // Validate the file
       const U32 validateCmdSeq = 14;
-      this->sendCmd_CS_VALIDATE(0, validateCmdSeq, fileName);
+      this->sendCmd_CS_VALIDATE(0, validateCmdSeq, file.getName());
       this->clearAndDispatch();
       // Assert command response
       ASSERT_CMD_RESPONSE_SIZE(1);
@@ -254,7 +256,6 @@ namespace Svc {
     Fw::Time testTime(TB_WORKSTATION_TIME, 1, 1);
     this->setTestTime(testTime);
     // Write the file
-    const char *const fileName = file.getName().toChar();
     file.write();
     // Get error info
     SequenceFiles::File::ErrorInfo errorInfo;
@@ -271,7 +272,7 @@ namespace Svc {
       //TODO: fix me Os::setLastError(Os::File::NO_SPACE);
       // Validate file
       const U32 validateCmdSeq = 14;
-      this->sendCmd_CS_VALIDATE(0, validateCmdSeq, fileName);
+      this->sendCmd_CS_VALIDATE(0, validateCmdSeq, file.getName());
       this->clearAndDispatch();
       // Assert command response
       ASSERT_CMD_RESPONSE_SIZE(1);
@@ -301,7 +302,6 @@ namespace Svc {
     Fw::Time testTime(TB_WORKSTATION_TIME, 1, 1);
     this->setTestTime(testTime);
     // Write the file
-    const char *const fileName = file.getName().toChar();
     file.write();
     // Get error info
     SequenceFiles::File::ErrorInfo errorInfo;
@@ -318,7 +318,7 @@ namespace Svc {
 
       // Validate file
       const U32 validateCmdSeq = 14;
-      this->sendCmd_CS_VALIDATE(0, validateCmdSeq, fileName);
+      this->sendCmd_CS_VALIDATE(0, validateCmdSeq, file.getName());
       this->clearAndDispatch();
       // Assert command response
       ASSERT_CMD_RESPONSE_SIZE(1);
@@ -347,7 +347,7 @@ namespace Svc {
       this->interceptor.size = 2;
       // Validate file
       const U32 validateCmdSeq = 14;
-      this->sendCmd_CS_VALIDATE(0, validateCmdSeq, fileName);
+      this->sendCmd_CS_VALIDATE(0, validateCmdSeq, file.getName());
       this->clearAndDispatch();
       // Assert command response
       ASSERT_CMD_RESPONSE_SIZE(1);
@@ -604,7 +604,7 @@ namespace Svc {
     validateFile(const U32 cmdSeq, const char* const fileName)
   {
     // Validate the file
-    this->sendCmd_CS_VALIDATE(0, cmdSeq, fileName);
+    this->sendCmd_CS_VALIDATE(0, cmdSeq, Fw::CmdStringArg(fileName));
     this->clearAndDispatch();
     // Assert command response
     ASSERT_CMD_RESPONSE_SIZE(1);
@@ -626,7 +626,7 @@ namespace Svc {
     // Invoke the port
     Fw::String fArg(fileName);
     this->clearHistory();
-    this->component.loadSequence(fileName);
+    this->component.loadSequence(fArg);
     // Assert events
     ASSERT_EVENTS_SIZE(1);
     ASSERT_EVENTS_CS_SequenceLoaded(0, fileName);
@@ -636,7 +636,7 @@ namespace Svc {
     runSequence(const U32 cmdSeq, const char* const fileName)
   {
     // Send run command
-    this->sendCmd_CS_RUN(0, cmdSeq, fileName,Svc::CmdSequencer_BlockState::NO_BLOCK);
+    this->sendCmd_CS_RUN(0, cmdSeq, Fw::CmdStringArg(fileName), Svc::CmdSequencer_BlockState::NO_BLOCK);
     this->clearAndDispatch();
     // Assert command response
     ASSERT_CMD_RESPONSE_SIZE(1);
@@ -686,7 +686,7 @@ namespace Svc {
     startNewSequence(const char *const fileName)
   {
     // Start the sequence
-    this->sendCmd_CS_RUN(0, 0, fileName,Svc::CmdSequencer_BlockState::NO_BLOCK);
+    this->sendCmd_CS_RUN(0, 0, Fw::CmdStringArg(fileName), Svc::CmdSequencer_BlockState::NO_BLOCK);
     this->clearAndDispatch();
     // Assert command response
     ASSERT_CMD_RESPONSE_SIZE(1);
@@ -699,7 +699,7 @@ namespace Svc {
     ASSERT_EVENTS_SIZE(1);
     ASSERT_EVENTS_CS_InvalidMode_SIZE(1);
     // Validate the file
-    this->sendCmd_CS_VALIDATE(0, 0, fileName);
+    this->sendCmd_CS_VALIDATE(0, 0, Fw::CmdStringArg(fileName));
     this->clearAndDispatch();
     // Assert command response
     ASSERT_CMD_RESPONSE_SIZE(1);
@@ -819,26 +819,34 @@ namespace Svc {
 } // namespace Svc
 
 namespace Os {
-//! Overrides the default delegate function with this one as it is defined in the local compilation archive
-//! \param aligned_placement_new_memory: memory to fill
-//! \param to_copy: possible copy
-//! \return: new interceptor
-FileInterface *FileInterface::getDelegate(U8 *aligned_placement_new_memory, const FileInterface* to_copy) {
-    FW_ASSERT(aligned_placement_new_memory != nullptr);
-    const Svc::CmdSequencerTester::Interceptor::PosixFileInterceptor* copy_me =
-            reinterpret_cast<const Svc::CmdSequencerTester::Interceptor::PosixFileInterceptor*>(to_copy);
-    // Placement-new the file handle into the opaque file-handle storage
-    static_assert(sizeof(Svc::CmdSequencerTester::Interceptor::PosixFileInterceptor) <= sizeof Os::File::m_handle_storage,
-            "Handle size not large enough");
-    static_assert((FW_HANDLE_ALIGNMENT % alignof(Svc::CmdSequencerTester::Interceptor::PosixFileInterceptor)) == 0,
-            "Handle alignment invalid");
-    Svc::CmdSequencerTester::Interceptor::PosixFileInterceptor *interface = nullptr;
-    if (to_copy == nullptr) {
-        interface = new(aligned_placement_new_memory) Svc::CmdSequencerTester::Interceptor::PosixFileInterceptor;
-    } else {
-        interface = new(aligned_placement_new_memory) Svc::CmdSequencerTester::Interceptor::PosixFileInterceptor(*copy_me);
-    }
-    FW_ASSERT(interface != nullptr);
-    return interface;
+
+//! \brief get a delegate for FileInterface that intercepts calls for command sequencer testing
+//! \param aligned_new_memory: aligned memory to fill
+//! \param to_copy: pointer to copy-constructor input
+//! \return: pointer to delegate
+FileInterface *FileInterface::getDelegate(FileHandleStorage& aligned_placement_new_memory, const FileInterface* to_copy) {
+    return Os::Delegate::makeDelegate<FileInterface, Svc::CmdSequencerTester::Interceptor::PosixFileInterceptor>(
+            aligned_placement_new_memory, to_copy
+    );
 }
+
+//! \brief get a delegate for FileSystemInterface that intercepts calls for stub fileSystem usage
+//! \param aligned_new_memory: aligned memory to fill
+//! \param to_copy: pointer to copy-constructor input
+//! \return: pointer to delegate
+FileSystemInterface *FileSystemInterface::getDelegate(FileSystemHandleStorage& aligned_placement_new_memory) {
+    return Os::Delegate::makeDelegate<FileSystemInterface, Os::Posix::FileSystem::PosixFileSystem>(
+        aligned_placement_new_memory
+    );
+}
+
+//! \brief get a delegate for DirectoryInterface that intercepts calls for stub Directory usage
+//! \param aligned_new_memory: aligned memory to fill
+//! \return: pointer to delegate
+DirectoryInterface *DirectoryInterface::getDelegate(DirectoryHandleStorage& aligned_placement_new_memory) {
+    return Os::Delegate::makeDelegate<DirectoryInterface, Os::Posix::Directory::PosixDirectory>(
+        aligned_placement_new_memory
+    );
+}
+
 }

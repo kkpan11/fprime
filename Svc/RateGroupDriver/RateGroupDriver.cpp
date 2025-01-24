@@ -41,7 +41,7 @@ namespace Svc {
 
     }
 
-    void RateGroupDriver::CycleIn_handler(NATIVE_INT_TYPE portNum, Svc::TimerVal& cycleStart) {
+    void RateGroupDriver::CycleIn_handler(NATIVE_INT_TYPE portNum, Os::RawTime& cycleStart) {
 
         // Make sure that the dividers have been configured:
         // If this asserts, add the configure() call to initialization.
@@ -52,9 +52,9 @@ namespace Svc {
         // it would be called every fourth invocation of the CycleIn port.
         for (NATIVE_UINT_TYPE entry = 0; entry < RateGroupDriver::DIVIDER_SIZE; entry++) {
             if (this->m_dividers[entry].divisor != 0) {
-                if (this->isConnected_CycleOut_OutputPort(entry)) {
+                if (this->isConnected_CycleOut_OutputPort(static_cast<FwIndexType>(entry))) {
                     if ((this->m_ticks % this->m_dividers[entry].divisor) == this->m_dividers[entry].offset) {
-                        this->CycleOut_out(entry,cycleStart);
+                        this->CycleOut_out(static_cast<FwIndexType>(entry),cycleStart);
                     }
                 }
             }

@@ -10,7 +10,7 @@ extern "C" {
 }
 namespace Os {
 
-File::File() : m_crc_buffer(), m_handle_storage(), m_delegate(*FileInterface::getDelegate(&m_handle_storage[0])) {
+File::File() : m_crc_buffer(), m_handle_storage(), m_delegate(*FileInterface::getDelegate(m_handle_storage)) {
     FW_ASSERT(&this->m_delegate == reinterpret_cast<FileInterface*>(&this->m_handle_storage[0]));
 }
 
@@ -28,7 +28,7 @@ File::File(const File& other) :
     m_crc(other.m_crc),
     m_crc_buffer(),
     m_handle_storage(),
-    m_delegate(*FileInterface::getDelegate(&m_handle_storage[0], &other.m_delegate)) {
+    m_delegate(*FileInterface::getDelegate(m_handle_storage, &other.m_delegate)) {
     FW_ASSERT(&this->m_delegate == reinterpret_cast<FileInterface*>(&this->m_handle_storage[0]));
 }
 
@@ -37,7 +37,7 @@ File& File::operator=(const File& other) {
         this->m_mode = other.m_mode;
         this->m_path = other.m_path;
         this->m_crc = other.m_crc;
-        this->m_delegate = *FileInterface::getDelegate(&m_handle_storage[0], &other.m_delegate);
+        this->m_delegate = *FileInterface::getDelegate(m_handle_storage, &other.m_delegate);
     }
     return *this;
 }
@@ -60,9 +60,10 @@ File::Status File::open(const CHAR* filepath, File::Mode requested_mode, File::O
     if (status == File::Status::OP_OK) {
         this->m_mode = requested_mode;
         this->m_path = filepath;
+        // Reset any open CRC calculations
+        this->m_crc = File::INITIAL_CRC;
     }
-    // Reset any open CRC calculations
-    this->m_crc = File::INITIAL_CRC;
+
     return status;
 }
 
@@ -216,7 +217,10 @@ File::Status File::incrementalCrc(FwSignedSizeType &size) {
         status = this->read(this->m_crc_buffer, size, File::WaitType::NO_WAIT);
         if (OP_OK == status) {
             for (FwSignedSizeType i = 0; i < size && i < FW_FILE_CHUNK_SIZE; i++) {
-                this->m_crc = update_crc_32(this->m_crc, static_cast<CHAR>(this->m_crc_buffer[i]));
+                this->m_crc =
+                    static_cast<U32>(
+                        update_crc_32(this->m_crc, static_cast<CHAR>(this->m_crc_buffer[i]))
+                        );
             }
         }
     }
@@ -228,6 +232,57 @@ File::Status File::finalizeCrc(U32 &crc) {
     crc = this->m_crc;
     this->m_crc = File::INITIAL_CRC;
     return status;
+}
+
+File::Status File::readline(U8* buffer, FwSignedSizeType &size, File::WaitType wait) {
+    const FwSignedSizeType requested_size = size;
+    FW_ASSERT(&this->m_delegate == reinterpret_cast<FileInterface*>(&this->m_handle_storage[0]));
+    FW_ASSERT(buffer != nullptr);
+    FW_ASSERT(size >= 0);
+    FW_ASSERT(this->m_mode < Mode::MAX_OPEN_MODE);
+    // Check that the file is open before attempting operation
+    if (OPEN_NO_MODE == this->m_mode) {
+        size = 0;
+        return File::Status::NOT_OPENED;
+    } else if (OPEN_READ != this->m_mode) {
+        size = 0;
+        return File::Status::INVALID_MODE;
+    }
+    FwSignedSizeType original_location;
+    File::Status status = this->position(original_location);
+    if (status != Os::File::Status::OP_OK) {
+        size = 0;
+        return status;
+    }
+    FwSignedSizeType read = 0;
+    // Loop reading chunk by chunk
+    for (FwSignedSizeType i = 0; i < size; i += read) {
+        FwSignedSizeType current_chunk_size = FW_MIN(size - i, FW_FILE_CHUNK_SIZE);
+        read = current_chunk_size;
+        status = this->read(buffer + i, read, wait);
+        if (status != File::Status::OP_OK) {
+            (void) this->seek(original_location, File::SeekType::ABSOLUTE);
+            return status;
+        }
+        // EOF break out now
+        if (read == 0) {
+            size = i;
+            return Os::File::Status::OP_OK;
+        }
+        // Loop from i to i + current_chunk_size looking for `\n`
+        for (FwSignedSizeType j = i; j < (i + read); j++) {
+            // Newline seek back to after it, return the size read
+            if (buffer[j] == '\n') {
+                size = j + 1;
+                // Ensure that the computation worked
+                FW_ASSERT(size <= requested_size);
+                (void) this->seek(original_location + j + 1, File::SeekType::ABSOLUTE);
+                return Os::File::Status::OP_OK;
+            }
+        }
+    }
+    // Failed to find newline within data available
+    return Os::File::Status::OTHER_ERROR;
 }
 } // Os
 

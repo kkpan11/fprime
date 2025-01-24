@@ -1,4 +1,3 @@
-type FwBuffSizeType
 type FwChanIdType
 type FwDpIdType
 type FwDpPriorityType
@@ -8,7 +7,10 @@ type FwIndexType
 type FwOpcodeType
 type FwPacketDescriptorType
 type FwPrmIdType
+type FwSignedSizeType
+type FwSizeStoreType
 type FwSizeType
 type FwTimeBaseStoreType
 type FwTimeContextStoreType
 type FwTlmPacketizeIdType
+type FwTraceIdType

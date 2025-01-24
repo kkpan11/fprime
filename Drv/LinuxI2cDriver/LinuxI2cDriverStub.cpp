@@ -14,8 +14,6 @@
 #include <FpConfig.hpp>
 #include <Drv/LinuxI2cDriver/LinuxI2cDriver.hpp>
 
-#define DEBUG_PRINT 0
-
 namespace Drv {
 
   // ----------------------------------------------------------------------
@@ -27,14 +25,6 @@ LinuxI2cDriver ::LinuxI2cDriver(
     ) : LinuxI2cDriverComponentBase(compName)
   {
 
-  }
-
-  void LinuxI2cDriver ::
-    init(
-        const NATIVE_INT_TYPE instance
-    )
-  {
-    LinuxI2cDriverComponentBase::init(instance);
   }
 
   LinuxI2cDriver ::

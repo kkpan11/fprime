@@ -16,10 +16,6 @@
 #include <Fw/Types/Assert.hpp>
 #include <Utils/Types/CircularBuffer.hpp>
 
-#ifdef CIRCULAR_DEBUG
-    #include <Os/Log.hpp>
-#endif
-
 namespace Types {
 
 CircularBuffer :: CircularBuffer() :
@@ -61,12 +57,12 @@ NATIVE_UINT_TYPE CircularBuffer :: get_allocated_size() const {
 
 NATIVE_UINT_TYPE CircularBuffer :: get_free_size() const {
     FW_ASSERT(m_store != nullptr && m_store_size != 0); // setup method was called
-    FW_ASSERT(m_allocated_size <= m_store_size, m_allocated_size);
+    FW_ASSERT(m_allocated_size <= m_store_size, static_cast<FwAssertArgType>(m_allocated_size));
     return m_store_size - m_allocated_size;
 }
 
 NATIVE_UINT_TYPE CircularBuffer :: advance_idx(NATIVE_UINT_TYPE idx, NATIVE_UINT_TYPE amount) const {
-    FW_ASSERT(idx < m_store_size, idx);
+    FW_ASSERT(idx < m_store_size, static_cast<FwAssertArgType>(idx));
     return (idx + amount) % m_store_size;
 }
 
@@ -80,12 +76,12 @@ Fw::SerializeStatus CircularBuffer :: serialize(const U8* const buffer, const NA
     // Copy in all the supplied data
     NATIVE_UINT_TYPE idx = advance_idx(m_head_idx, m_allocated_size);
     for (U32 i = 0; i < size; i++) {
-        FW_ASSERT(idx < m_store_size, idx);
+        FW_ASSERT(idx < m_store_size, static_cast<FwAssertArgType>(idx));
         m_store[idx] = buffer[i];
         idx = advance_idx(idx);
     }
     m_allocated_size += size;
-    FW_ASSERT(m_allocated_size <= this->get_capacity(), m_allocated_size);
+    FW_ASSERT(m_allocated_size <= this->get_capacity(), static_cast<FwAssertArgType>(m_allocated_size));
     m_high_water_mark = (m_high_water_mark > m_allocated_size) ? m_high_water_mark : m_allocated_size;
     return Fw::FW_SERIALIZE_OK;
 }
@@ -102,7 +98,7 @@ Fw::SerializeStatus CircularBuffer :: peek(U8& value, NATIVE_UINT_TYPE offset) c
         return Fw::FW_DESERIALIZE_BUFFER_EMPTY;
     }
     const NATIVE_UINT_TYPE idx = advance_idx(m_head_idx, offset);
-    FW_ASSERT(idx < m_store_size, idx);
+    FW_ASSERT(idx < m_store_size, static_cast<FwAssertArgType>(idx));
     value = m_store[idx];
     return Fw::FW_SERIALIZE_OK;
 }
@@ -118,7 +114,7 @@ Fw::SerializeStatus CircularBuffer :: peek(U32& value, NATIVE_UINT_TYPE offset) 
 
     // Deserialize all the bytes from network format
     for (NATIVE_UINT_TYPE i = 0; i < sizeof(U32); i++) {
-        FW_ASSERT(idx < m_store_size, idx);
+        FW_ASSERT(idx < m_store_size, static_cast<FwAssertArgType>(idx));
         value = (value << 8) | static_cast<U32>(m_store[idx]);
         idx = advance_idx(idx);
     }
@@ -135,7 +131,7 @@ Fw::SerializeStatus CircularBuffer :: peek(U8* buffer, NATIVE_UINT_TYPE size, NA
     NATIVE_UINT_TYPE idx = advance_idx(m_head_idx, offset);
     // Deserialize all the bytes from network format
     for (NATIVE_UINT_TYPE i = 0; i < size; i++) {
-        FW_ASSERT(idx < m_store_size, idx);
+        FW_ASSERT(idx < m_store_size, static_cast<FwAssertArgType>(idx));
         buffer[i] = m_store[idx];
         idx = advance_idx(idx);
     }
@@ -166,15 +162,4 @@ void CircularBuffer ::clear_high_water_mark() {
     m_high_water_mark = 0;
 }
 
-#ifdef CIRCULAR_DEBUG
-void CircularBuffer :: print() {
-    NATIVE_UINT_TYPE idx = m_head_idx;
-    Os::Log::logMsg("Ring: ", 0, 0, 0, 0, 0, 0);
-    for (NATIVE_UINT_TYPE i = 0; i < m_allocated_size; ++i) {
-        Os::Log::logMsg("%c", m_store[idx], 0, 0, 0, 0, 0);
-        idx = advance_idx(idx);
-    }
-    Os::Log::logMsg("\n", 0, 0, 0, 0, 0, 0);
-}
-#endif
 } //End Namespace Types
